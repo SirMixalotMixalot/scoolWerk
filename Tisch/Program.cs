@@ -151,7 +151,7 @@ namespace Tisch
                 }
                 //Just print the bottom of the table, (scuffed as hell) since we must have appended a new line before
                 if(row == _tableInfo.rowNums - 1) {
-                    table.Append(" " + new String('-',LengthOfCell() - 2));
+                    table.Append(TABLE_CHARS.LEFT_BOTTOM_EDGE + new String('-',LengthOfCell() - 2) + TABLE_CHARS.RIGHT_BOTTOM_EDGE);
                 }
             }
             return table.ToString();
