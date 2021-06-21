@@ -37,6 +37,7 @@ Module Program
     Const N = 2
     Sub Main(args As String())
         Dim items(N - 1) As StoreItem ' Creating an array of storeitems 
+        Dim runningTotal As Double
         For i = 0 to N - 1
             Dim _input() As String
             Dim res As Result 
@@ -46,16 +47,16 @@ Module Program
                 res = Valid(_input)
             Loop While res.IsEmpty
             items(i) = res.sItem 
+            runningTotal += items(i).Quantity * items(i).Price
         Next
         
-        Dim amountForEach = items.Select(Function(i) i.Quantity * i.Price)
-        Dim runningTotal  = amountForEach.Sum()
+        Dim amountForEach = items.Select(Function(i) (i.Quantity * i.Price).ToString())
         Dim Barcodes      = items.Select(Function(i) i.Barcode)
         Dim Quantities    = items.Select(Function(i) i.Quantity.ToString())
         Dim t             = New Table("Barcode","Quantity","Amount($)")
         t.AddColData("Barcode",Barcodes.ToArray())
         t.AddColData("Quantity",Quantities.ToArray())
-        t.AddColData("Amount($)",amountForEach.Select(Function(a) a.ToString()).ToArray() )
+        t.AddColData("Amount($)",amountForEach.ToArray() )
         Console.WriteLine(t)
         Console.WriteLine($"The Total amount is ${runningTotal}")
     End Sub
