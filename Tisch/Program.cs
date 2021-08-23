@@ -51,7 +51,8 @@ namespace Tisch
                 lenOfRow    = 0;
                 //All members initialized to 0 so I don't have to
                 maxLenCell = new int[cols.Length];
-                rowNums     = 0;
+                //heading counts as a row
+                rowNums     = 1;
                 //Set the initial cell length to that of the column heading
                 for (int i = 0; i < cols.Length;i++) {
                     maxLenCell[i] = colHeadings[i].Length;
@@ -70,6 +71,10 @@ namespace Tisch
             var len = colHeadings.Length;
             _currentCol  = 0;
             _internalTable = new List<String>[len];
+            for(int i = 0; i < len; i++) {
+                _internalTable[i] = new List<string>();
+                _internalTable[i].Add(colHeadings[i]);
+            }
             _tableInfo = new TableInfo(colHeadings);
             _colHasData = new bool[colHeadings.Length];
 
@@ -102,7 +107,7 @@ namespace Tisch
                 mustAddMore = true;
             }
             
-            _internalTable[_currentCol] = (new List<String>(_tableInfo.rowNums));
+            
 
             for (int i = 0; i < col.Length; i++) {
                 string strRepr = col[i];
@@ -136,13 +141,13 @@ namespace Tisch
             return $"{padStrFront}{item}{padStrBack}"; 
 
         }
-        private StringBuilder AppendRecord(int row, bool areheadings) {
+        private StringBuilder AppendRecord(int row) {
             var table = new StringBuilder();
             char topLeft = TABLE_CHARS.LEFT_MID_EDGE;
             char topRight = TABLE_CHARS.RIGHT_MID_EDGE;
             char divider = TABLE_CHARS.MID_ROW_COL_DIV;
             
-            if(areheadings) {
+            if(row == 0) {
                 topLeft = TABLE_CHARS.LEFT_TOP_EDGE;
                 topRight = TABLE_CHARS.RIGHT_TOP_EDGE;
                 divider  = TABLE_CHARS.TOP_COL_DIV;
@@ -162,7 +167,7 @@ namespace Tisch
             //Actually add data
             table.Append(TABLE_CHARS.COL_LINE);
             for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
-                var current_data = !areheadings? _internalTable[i][row] : _tableInfo.colHeadings[i];
+                var current_data = _internalTable[i][row];
                 var padded_col = PadCentred(current_data,i, ' ');
                 table.Append(padded_col);
                 table.Append(TABLE_CHARS.COL_LINE);
@@ -185,9 +190,8 @@ namespace Tisch
         //Only way of viewing the table, all you would have to do is call `table.ToString()`
         public override string ToString() {
             var table = new StringBuilder();
-            table.Append(AppendRecord(0,true));
             for(int row = 0; row < _tableInfo.rowNums; row++) {
-                table.Append(AppendRecord(row,false));
+                table.Append(AppendRecord(row));
             }
             return table.ToString();
         }
