@@ -5,7 +5,18 @@ using System.Collections.Generic;
 namespace Tisch 
 {
     //A couple constants to help construct the table 
+    /*
+          ┌━━━━━━━━━━┬━━━━━━━┐ 
+          │   Ages   │ Names │
+          ├━━━━━━━━━━┼━━━━━━━┤
+          │    14    │ David │
+          ├━━━━━━━━━━┼━━━━━━━┤
+          |    20    | Mark  |
+          └━━━━━━━━━━┴━━━━━━━┘
+    */
+          
     public static class TABLE_CHARS {
+    
         public const char LEFT_TOP_EDGE     = '┌';
         public const char RIGHT_TOP_EDGE    = '┐';
 
@@ -19,6 +30,8 @@ namespace Tisch
 
         public const char LEFT_MID_EDGE     = '├';
         public const char RIGHT_MID_EDGE    = '┤';
+        public const char ROW_LINE          = '━';
+        public const char COL_LINE          = '│';
     }
 
     public class Table {
@@ -29,7 +42,7 @@ namespace Tisch
         //All of this info will be encapsulated in the TableInfo struct
         private struct TableInfo {
             public int lenOfRow;
-            public int[] maxLenCol;
+            public int[] maxLenCell;
             public int rowNums;
             public readonly string[] colHeadings;
 
@@ -37,11 +50,11 @@ namespace Tisch
                 colHeadings = cols;
                 lenOfRow    = 0;
                 //All members initialized to 0 so I don't have to
-                maxLenCol = new int[cols.Length];
+                maxLenCell = new int[cols.Length];
                 rowNums     = 0;
-                //Set the initial column length to that of the column heading
+                //Set the initial cell length to that of the column heading
                 for (int i = 0; i < cols.Length;i++) {
-                    maxLenCol[i] = colHeadings[i].Length;
+                    maxLenCell[i] = colHeadings[i].Length;
                 }
             }
 
@@ -59,6 +72,16 @@ namespace Tisch
             _tableInfo = new TableInfo(colHeadings);
 
         }
+        private void PadColsToLength(int newColLength) {
+            _tableInfo.rowNums = newColLength;
+            for (int i = 0; i < _internalTable.Count; i++)
+            {
+                for (int j = 0; j < newColLength; j++) {
+                    _internalTable[i].Add(" ");
+                }
+            }
+
+        }
         //Adds data to the specified column, returns false if columnName could not be found
         public bool AddColData(string colunmName,string[] col) {
             _currentCol = Array.IndexOf(_tableInfo.colHeadings, colunmName);
@@ -69,14 +92,7 @@ namespace Tisch
             //one
             var mustAddMore = false;
             if(_tableInfo.rowNums < col.Length) {
-                _tableInfo.rowNums = col.Length;
-                for (int i = 0; i < _internalTable.Count; i++)
-                {
-                    for (int j = 0; j < col.Length; j++) {
-                        _internalTable[i].Add(" ");
-                    }
-                }
-
+                PadColsToLength(col.Length);
             }else {
                 mustAddMore = true;
             }
@@ -87,7 +103,7 @@ namespace Tisch
                 string strRepr = col[i];
                 
                 //Updating the max length of a column for formatting purposes later on
-                _tableInfo.maxLenCol[_currentCol] = Math.Max(_tableInfo.maxLenCol[_currentCol], strRepr.Length);
+                _tableInfo.maxLenCell[_currentCol] = Math.Max(_tableInfo.maxLenCell[_currentCol], strRepr.Length);
                 _internalTable[_currentCol].Add(strRepr);
             }
             //If we have to add more elements to the current column, add empty strings
@@ -99,60 +115,75 @@ namespace Tisch
             _currentCol += 1;
             return true;
         }
-        private string PadCentred(string item, int col, bool isCol) {
+        private string PadCentred(string item, int col, bool _isHeader) {
             
-            var diff = _tableInfo.maxLenCol[col] - item.Length;
+            var diff = _tableInfo.maxLenCell[col] - item.Length;
           
             if(diff == 0) 
                 return item;
             var n = diff / 2;
           
-            var padChar = isCol ? '═' : ' ';
+            var padChar = ' ';
             var padStrFront = new String(padChar,n);
-            var padStrBack  = diff % 2 == 0? padStrFront : new String(padChar, _tableInfo.maxLenCol[col] - (n + item.Length)) ;
+            var padStrBack  = diff % 2 == 0? padStrFront : new String(padChar, _tableInfo.maxLenCell[col] - (n + item.Length)) ;
             return $"{padStrFront}{item}{padStrBack}"; 
 
         }
-        private int LengthOfCell() {
-            return 2 + _tableInfo.maxLenCol.Sum() + _tableInfo.colHeadings.Length - 1;
+        private StringBuilder AppendRecord(List<String> source, int row) {
+            var table = new StringBuilder();
+            char topLeft = TABLE_CHARS.LEFT_MID_EDGE;
+            char topRight = TABLE_CHARS.RIGHT_MID_EDGE;
+            char divider = TABLE_CHARS.MID_ROW_COL_DIV;
+            //Setup header
+            if(row == 0) {
+                topLeft = TABLE_CHARS.LEFT_TOP_EDGE;
+                topRight = TABLE_CHARS.LEFT_TOP_EDGE;
+                divider  = TABLE_CHARS.TOP_COL_DIV;
+            }
+        
+
+            // Setup top of record
+            table.Append(topLeft);
+            for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
+                table.Append(new String(TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i] - 1));
+                if (i == _tableInfo.colHeadings.Length - 1) 
+                    table.Append(topRight);
+                else
+                    table.Append(divider);
+            }
+            table.AppendLine();
+            //Actually add data
+            table.Append(TABLE_CHARS.COL_LINE);
+            for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
+                var current_data = source[i];
+                var padded_col = PadCentred(current_data,i,true);
+                table.Append(padded_col);
+                table.Append(TABLE_CHARS.COL_LINE);
+            }
+            table.AppendLine();
+            //Last row so we should draw bottom
+            if (row == _tableInfo.rowNums - 1) {
+                table.Append(TABLE_CHARS.LEFT_BOTTOM_EDGE);
+                for (int i = 0 ; i < _tableInfo.colHeadings.Length; i++) {
+                    table.Append(new String(TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i] - 1));
+                    if(i == _tableInfo.colHeadings.Length - 1) 
+                        table.Append(TABLE_CHARS.RIGHT_BOTTOM_EDGE);
+                    else 
+                        table.Append(TABLE_CHARS.BOTTOM_COL_DIV);
+                }
+                table.AppendLine();
+            }
+            return table;
         }
-        //Only way of viewing the table, all you would have to do is call `table.ToString()'
+        private int LengthOfRecord() {
+            //Huh?
+            return 2 + _tableInfo.maxLenCell.Sum() + _tableInfo.colHeadings.Length - 1;
+        }
+        //Only way of viewing the table, all you would have to do is call `table.ToString()`
         public override string ToString() {
             var table = new StringBuilder();
-            //Setup header
-            table.Append(TABLE_CHARS.LEFT_TOP_EDGE);
-            for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
-                if(i == _tableInfo.colHeadings.Length - 1) {
-                    table.Append(PadCentred(_tableInfo.colHeadings[i],i,true));
-                    table.AppendLine(TABLE_CHARS.RIGHT_TOP_EDGE.ToString());
-                    break;
-                }
-                var current_heading = _tableInfo.colHeadings[i];
-                var padded_col = PadCentred(current_heading,i,true);
-                table.Append(padded_col);
-                table.Append(TABLE_CHARS.TOP_COL_DIV);
-            }
             for(int row = 0; row < _tableInfo.rowNums; row++) {
-                //If we are at the last row, put a '└' 
-                table.Append(TABLE_CHARS.LEFT_MID_EDGE);
-                for (int col = 0; col < _currentCol; col++) {
-                    var currentItem = _internalTable[col][row];
-                    var paddedItem = PadCentred(currentItem,col,false);
-                    table.Append(paddedItem);
-                    if (col != _currentCol - 1)
-                    {
-                        table.Append(TABLE_CHARS.MID_ROW_COL_DIV);
-                        
-                    }
-                    else
-                    {
-                        table.AppendLine(TABLE_CHARS.RIGHT_MID_EDGE.ToString());
-                    }
-                }
-                //Just print the bottom of the table, (scuffed as hell) since we must have appended a new line before
-                if(row == _tableInfo.rowNums - 1) {
-                    table.Append(TABLE_CHARS.LEFT_BOTTOM_EDGE + new String('-',LengthOfCell() - 2) + TABLE_CHARS.RIGHT_BOTTOM_EDGE);
-                }
+                table.Append(AppendRecord(_internalTable[row],row));
             }
             return table.ToString();
         }
