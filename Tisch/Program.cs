@@ -62,23 +62,27 @@ namespace Tisch
         private TableInfo _tableInfo;
         //Stores the columns 
         //so 0th index is first column
-        private List<List<String>> _internalTable;
+        private List<String>[] _internalTable;
         private int _currentCol;
+        private bool[] _colHasData;
         //Creates a table with the given headings, and appropriate number of columns
         public Table(params string[] colHeadings) {
             var len = colHeadings.Length;
             _currentCol  = 0;
-            _internalTable = new List<List<String>>(len);
+            _internalTable = new List<String>[len];
             _tableInfo = new TableInfo(colHeadings);
+            _colHasData = new bool[colHeadings.Length];
 
         }
         private void PadColsToLength(int newColLength) {
             _tableInfo.rowNums = newColLength;
-            for (int i = 0; i < _internalTable.Count; i++)
+            for (int i = 0; i < _internalTable.Length; i++)
             {
-                for (int j = 0; j < newColLength; j++) {
-                    _internalTable[i].Add(" ");
+                if(_colHasData[i]) {
+                    for(int j = 0; j < newColLength - _internalTable[i].Count; j++)
+                        _internalTable[i].Append(" "); 
                 }
+
             }
 
         }
@@ -88,6 +92,7 @@ namespace Tisch
             if(_currentCol < 0) {
                 return false;
             }
+            //Console.WriteLine($"{colunmName} was found at index {_currentCol}");
             //If we change the number of rows, we should do that for every column before this new
             //one
             var mustAddMore = false;
@@ -97,7 +102,7 @@ namespace Tisch
                 mustAddMore = true;
             }
             
-            _internalTable.Add(new List<String>(_tableInfo.rowNums));
+            _internalTable[_currentCol] = (new List<String>(_tableInfo.rowNums));
 
             for (int i = 0; i < col.Length; i++) {
                 string strRepr = col[i];
@@ -112,10 +117,12 @@ namespace Tisch
                     _internalTable[_currentCol].Add(" ");
                 }
             }
-            _currentCol += 1;
+            _colHasData[_currentCol++] = true;
             return true;
         }
-        private string PadCentred(string item, int col, bool _isHeader) {
+        //TODO:Add other types of Padding, such as Left, Right
+        //  Idea, map each column to a padding function
+        private string PadCentred(string item, int col, char padChar) {
             
             var diff = _tableInfo.maxLenCell[col] - item.Length;
           
@@ -123,29 +130,29 @@ namespace Tisch
                 return item;
             var n = diff / 2;
           
-            var padChar = ' ';
+            
             var padStrFront = new String(padChar,n);
             var padStrBack  = diff % 2 == 0? padStrFront : new String(padChar, _tableInfo.maxLenCell[col] - (n + item.Length)) ;
             return $"{padStrFront}{item}{padStrBack}"; 
 
         }
-        private StringBuilder AppendRecord(List<String> source, int row) {
+        private StringBuilder AppendRecord(int row, bool areheadings) {
             var table = new StringBuilder();
             char topLeft = TABLE_CHARS.LEFT_MID_EDGE;
             char topRight = TABLE_CHARS.RIGHT_MID_EDGE;
             char divider = TABLE_CHARS.MID_ROW_COL_DIV;
-            //Setup header
-            if(row == 0) {
+            
+            if(areheadings) {
                 topLeft = TABLE_CHARS.LEFT_TOP_EDGE;
-                topRight = TABLE_CHARS.LEFT_TOP_EDGE;
+                topRight = TABLE_CHARS.RIGHT_TOP_EDGE;
                 divider  = TABLE_CHARS.TOP_COL_DIV;
             }
-        
+            
 
             // Setup top of record
             table.Append(topLeft);
             for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
-                table.Append(new String(TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i] - 1));
+                table.Append(PadCentred(new String(TABLE_CHARS.ROW_LINE,1),i,TABLE_CHARS.ROW_LINE));
                 if (i == _tableInfo.colHeadings.Length - 1) 
                     table.Append(topRight);
                 else
@@ -155,8 +162,8 @@ namespace Tisch
             //Actually add data
             table.Append(TABLE_CHARS.COL_LINE);
             for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
-                var current_data = source[i];
-                var padded_col = PadCentred(current_data,i,true);
+                var current_data = !areheadings? _internalTable[i][row] : _tableInfo.colHeadings[i];
+                var padded_col = PadCentred(current_data,i, ' ');
                 table.Append(padded_col);
                 table.Append(TABLE_CHARS.COL_LINE);
             }
@@ -165,7 +172,7 @@ namespace Tisch
             if (row == _tableInfo.rowNums - 1) {
                 table.Append(TABLE_CHARS.LEFT_BOTTOM_EDGE);
                 for (int i = 0 ; i < _tableInfo.colHeadings.Length; i++) {
-                    table.Append(new String(TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i] - 1));
+                    table.Append(PadCentred(new String(TABLE_CHARS.ROW_LINE,1),i, TABLE_CHARS.ROW_LINE));
                     if(i == _tableInfo.colHeadings.Length - 1) 
                         table.Append(TABLE_CHARS.RIGHT_BOTTOM_EDGE);
                     else 
@@ -175,15 +182,12 @@ namespace Tisch
             }
             return table;
         }
-        private int LengthOfRecord() {
-            //Huh?
-            return 2 + _tableInfo.maxLenCell.Sum() + _tableInfo.colHeadings.Length - 1;
-        }
         //Only way of viewing the table, all you would have to do is call `table.ToString()`
         public override string ToString() {
             var table = new StringBuilder();
+            table.Append(AppendRecord(0,true));
             for(int row = 0; row < _tableInfo.rowNums; row++) {
-                table.Append(AppendRecord(_internalTable[row],row));
+                table.Append(AppendRecord(row,false));
             }
             return table.ToString();
         }

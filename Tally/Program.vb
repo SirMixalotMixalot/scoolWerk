@@ -34,7 +34,7 @@ Module Program
         res.IsEmpty = False
         Return res
     End Function
-    Const N = 2
+    Const N = 5
     Sub Main(args As String())
         Dim items(N - 1) As StoreItem ' Creating an array of storeitems 
         Dim runningTotal As Double
