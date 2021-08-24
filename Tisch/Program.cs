@@ -33,8 +33,18 @@ namespace Tisch
         public const char ROW_LINE          = '━';
         public const char COL_LINE          = '│';
     }
+    public enum Alignment {
+        Centred = 0,
+        Left    = 1,
+        Right   = 2,
+    }
 
     public class Table {
+        Func<string,char,int,string>[] alignmentFuncs = new Func<string,char,int,string>[] {
+            PadCentred,
+            PadLeft,
+            PadRight
+        };
         //Need to represent
         //  1. Padding that should be added to each column
         //  2. Maximum length of individual cell
@@ -45,9 +55,11 @@ namespace Tisch
             public int[] maxLenCell;
             public int rowNums;
             public readonly string[] colHeadings;
+            public readonly Alignment alignment;
 
-            public TableInfo(string[] cols) {
+            public TableInfo(string[] cols, Alignment al) {
                 colHeadings = cols;
+                alignment = al;
                 lenOfRow    = 0;
                 //All members initialized to 0 so I don't have to
                 maxLenCell = new int[cols.Length];
@@ -67,7 +79,7 @@ namespace Tisch
         private int _currentCol;
         private bool[] _colHasData;
         //Creates a table with the given headings, and appropriate number of columns
-        public Table(params string[] colHeadings) {
+        public Table(Alignment al,params string[] colHeadings) {
             var len = colHeadings.Length;
             _currentCol  = 0;
             _internalTable = new List<String>[len];
@@ -75,12 +87,12 @@ namespace Tisch
                 _internalTable[i] = new List<string>();
                 _internalTable[i].Add(colHeadings[i]);
             }
-            _tableInfo = new TableInfo(colHeadings);
+            _tableInfo = new TableInfo(colHeadings,al);
             _colHasData = new bool[colHeadings.Length];
 
         }
         private void PadColsToLength(int newColLength) {
-            _tableInfo.rowNums = newColLength;
+            _tableInfo.rowNums = newColLength + 1; //Because of headings!;
             for (int i = 0; i < _internalTable.Length; i++)
             {
                 if(_colHasData[i]) {
@@ -127,9 +139,11 @@ namespace Tisch
         }
         //TODO:Add other types of Padding, such as Left, Right
         //  Idea, map each column to a padding function
-        private string PadCentred(string item, int col, char padChar) {
+        static private string PadLeft(string item, char padChar, int maxLen) => item + new String(padChar,maxLen - item.Length);
+        static private string PadRight(string item, char padChar, int maxLen) => new String(padChar,maxLen - item.Length) + item;
+        static private string PadCentred(string item,char padChar, int maxLen) {
             
-            var diff = _tableInfo.maxLenCell[col] - item.Length;
+            var diff = maxLen - item.Length;
           
             if(diff == 0) 
                 return item;
@@ -137,10 +151,11 @@ namespace Tisch
           
             
             var padStrFront = new String(padChar,n);
-            var padStrBack  = diff % 2 == 0? padStrFront : new String(padChar, _tableInfo.maxLenCell[col] - (n + item.Length)) ;
+            var padStrBack  = diff % 2 == 0? padStrFront : new String(padChar, maxLen - (n + item.Length)) ;
             return $"{padStrFront}{item}{padStrBack}"; 
 
         }
+
         private StringBuilder AppendRecord(int row) {
             var table = new StringBuilder();
             char topLeft = TABLE_CHARS.LEFT_MID_EDGE;
@@ -153,11 +168,11 @@ namespace Tisch
                 divider  = TABLE_CHARS.TOP_COL_DIV;
             }
             
-
+            var pad = alignmentFuncs[(int)_tableInfo.alignment];
             // Setup top of record
             table.Append(topLeft);
             for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
-                table.Append(PadCentred(new String(TABLE_CHARS.ROW_LINE,1),i,TABLE_CHARS.ROW_LINE));
+                table.Append(pad(new String(TABLE_CHARS.ROW_LINE,1),TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i]));
                 if (i == _tableInfo.colHeadings.Length - 1) 
                     table.Append(topRight);
                 else
@@ -168,7 +183,7 @@ namespace Tisch
             table.Append(TABLE_CHARS.COL_LINE);
             for (int i = 0; i < _tableInfo.colHeadings.Length; i++) {
                 var current_data = _internalTable[i][row];
-                var padded_col = PadCentred(current_data,i, ' ');
+                var padded_col = pad(current_data, ' ',_tableInfo.maxLenCell[i]);
                 table.Append(padded_col);
                 table.Append(TABLE_CHARS.COL_LINE);
             }
@@ -177,7 +192,7 @@ namespace Tisch
             if (row == _tableInfo.rowNums - 1) {
                 table.Append(TABLE_CHARS.LEFT_BOTTOM_EDGE);
                 for (int i = 0 ; i < _tableInfo.colHeadings.Length; i++) {
-                    table.Append(PadCentred(new String(TABLE_CHARS.ROW_LINE,1),i, TABLE_CHARS.ROW_LINE));
+                    table.Append(pad(new String(TABLE_CHARS.ROW_LINE,1), TABLE_CHARS.ROW_LINE,_tableInfo.maxLenCell[i]));
                     if(i == _tableInfo.colHeadings.Length - 1) 
                         table.Append(TABLE_CHARS.RIGHT_BOTTOM_EDGE);
                     else 

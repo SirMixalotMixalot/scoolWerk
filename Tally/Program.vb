@@ -34,7 +34,7 @@ Module Program
         res.IsEmpty = False
         Return res
     End Function
-    Const N = 5
+    Const N = 4
     Sub Main(args As String())
         Dim items(N - 1) As StoreItem ' Creating an array of storeitems 
         Dim runningTotal As Double
@@ -53,7 +53,7 @@ Module Program
         Dim amountForEach = items.Select(Function(i) (i.Quantity * i.Price).ToString())
         Dim Barcodes      = items.Select(Function(i) i.Barcode)
         Dim Quantities    = items.Select(Function(i) i.Quantity.ToString())
-        Dim t             = New Table("Barcode","Quantity","Amount($)")
+        Dim t             = New Table(Alignment.Centred,"Barcode","Quantity","Amount($)")
         t.AddColData("Barcode",Barcodes.ToArray())
         t.AddColData("Quantity",Quantities.ToArray())
         t.AddColData("Amount($)",amountForEach.ToArray() )

@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    
+    <PackageId>Tisch</PackageId>
+    <Version>1.0.1</Version>
+    <Authors>Bk</Authors>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
